@@ -359,14 +359,15 @@ brod_init() ->
     {ok, BootstrapBroker} = application:get_env(?APP, broker),
     {ok, ClientConfig} = application:get_env(?APP, client),
     ok = brod:start_client(BootstrapBroker, brod_client_1, ClientConfig),
-    io:format("Init EMQX-Kafka-Bridge with ~p~n", [BootstrapBroker]).
+    io:format("Init EMQX-Kafka-Bridge with ~p, ~p~n", [BootstrapBroker, ClientConfig]).
 
 kafka_pub(Hook, Params) ->
     case ets:lookup(topic_table, Hook) of
         [{_, Topic}] ->
-            Partition = application:get_env(?APP, partition, 1),
+            Partition = application:get_env(?APP, partition, 0),
             Body = emqx_json:encode(Params),
-            brod:produce_sync(brod_client_1, Topic, Partition, <<>>, Body);
+            io:format("publishing to ~p~n", [Topic]),
+            ok = brod:produce_sync(brod_client_1, Topic, Partition, <<>>, Body);
         [] ->
             io:format("hook not matched: ~p, all_table: ~p~n", [Hook, ets:tab2list(topic_table)])
     end.
