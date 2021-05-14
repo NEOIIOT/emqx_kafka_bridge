@@ -366,7 +366,7 @@ kafka_pub(Hook, Params) ->
         [{_, Topic}] ->
             Partition = application:get_env(?APP, partition, 1),
             Body = emqx_json:encode(Params),
-            brod:produce(brod_client_1, Topic, Partition, <<>>, Body);
+            brod:produce_sync(brod_client_1, Topic, Partition, <<>>, Body);
         [] ->
             io:format("hook not matched: ~p, all_table: ~p~n", [Hook, ets:tab2list(topic_table)])
     end.
