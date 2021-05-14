@@ -6,11 +6,6 @@ EMQ X Kafka Bridge
 ``` properties
 bridge.kafka.host = 127.0.0.1
 bridge.kafka.port = 5672
-bridge.kafka.partition_strategy = strict_round_robin
-bridge.kafka.partition_workers = 8
-
-bridge.kafka.auto_reconnect = 1
-bridge.kafka.pool_size = 5
 
 bridge.kafka.payload_encoding = json
 
