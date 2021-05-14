@@ -26,13 +26,12 @@
 -import(inet, [ntoa/1]).
 
 %% APIs
--export([load/0, register_metrics/0, unload/0]).
+-export([register_metrics/0, load/0, unload/0]).
 %% Hooks callback
--export([on_client_connack/4, on_client_connect/3]).
--export([on_client_connected/3, on_client_disconnected/4]).
--export([on_client_subscribe/4, on_client_unsubscribe/4]).
--export([on_session_subscribed/4, on_session_terminated/4, on_session_unsubscribed/4]).
--export([on_message_acked/3, on_message_delivered/3, on_message_publish/2]).
+-export([on_client_connect/3, on_client_connack/4, on_client_connected/3,
+         on_client_disconnected/4, on_client_subscribe/4, on_client_unsubscribe/4]).
+-export([on_session_subscribed/4, on_session_unsubscribed/4, on_session_terminated/4]).
+-export([on_message_publish/2, on_message_delivered/3, on_message_acked/3]).
 
 %%--------------------------------------------------------------------
 %% APIs
@@ -54,12 +53,18 @@ register_metrics() ->
                    'kafka_bridge.message_acked']).
 
 load() ->
-    brod_init(),
-    ets:new(topic_table, [named_table, protected, set, {keypos, 1}]),
     io:format("Loading emqx_kafka_bridge plugin ~n"),
+    {ok, _} = application:ensure_all_started(brod),
+    {ok, BootstrapBroker} = application:get_env(?APP, broker),
+    {ok, ClientConfig} = application:get_env(?APP, client),
+    ok = brod:start_client(BootstrapBroker, brod_client_1, ClientConfig),
+    io:format("Init EMQX-Kafka-Bridge with ~p, ~p~n", [BootstrapBroker, ClientConfig]),
+
+    ets:new(topic_table, [named_table, protected, set, {keypos, 1}]),
     lists:foreach(fun({Hook, Filter}) ->
                      load_(Hook, Filter),
-                     ets:insert(topic_table, {Hook, Filter})
+                     ets:insert(topic_table, {Hook, Filter}),
+                     ok = brod:start_producer(brod_client_1, Filter, _ProducerConfig = [])
                   end,
                   parse_rule(application:get_env(?APP, rules, []))),
     io:format("topic_table: ~p~n", [ets:tab2list(topic_table)]).
@@ -272,7 +277,8 @@ on_session_terminated(#{clientid := ClientId, username := Username},
 
 on_message_publish(Message = #message{topic = <<"$SYS/", _/binary>>}, _Env) ->
     {ok, Message};
-on_message_publish(Message = #message{topic = Topic}, {Filter}) ->
+on_message_publish(Message = #message{topic = Topic, flags = #{retain := Retain}}, Env) ->
+    #{filter := Filter} = Env,
     with_filter(fun() ->
                    emqx_metrics:inc('kafka_bridge.message_publish'),
                    {FromClientId, FromUsername} = parse_from(Message),
@@ -354,12 +360,6 @@ on_message_acked(#{clientid := ClientId, username := Username},
 %%--------------------------------------------------------------------
 %% Internal functions
 %%--------------------------------------------------------------------
-brod_init() ->
-    {ok, _} = application:ensure_all_started(brod),
-    {ok, BootstrapBroker} = application:get_env(?APP, broker),
-    {ok, ClientConfig} = application:get_env(?APP, client),
-    ok = brod:start_client(BootstrapBroker, brod_client_1, ClientConfig),
-    io:format("Init EMQX-Kafka-Bridge with ~p, ~p~n", [BootstrapBroker, ClientConfig]).
 
 kafka_pub(Hook, Params) ->
     case ets:lookup(topic_table, Hook) of
