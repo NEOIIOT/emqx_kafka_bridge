@@ -54,7 +54,7 @@ register_metrics() ->
                    'kafka_bridge.message_acked']).
 
 load() ->
-    application:load(ekaf),
+    brod_init(),
     ets:new(topic_table, [named_table, protected, set, {keypos, 1}]),
     io:format("Loading emqx_kafka_bridge plugin ~n"),
     lists:foreach(fun({Hook, Filter}) ->
@@ -361,11 +361,19 @@ on_message_acked(#{clientid := ClientId, username := Username},
 %%--------------------------------------------------------------------
 %% Internal functions
 %%--------------------------------------------------------------------
+brod_init() ->
+    {ok, _} = application:ensure_all_started(brod),
+    {ok, BootstrapBroker} = application:get_env(?APP, broker),
+    {ok, ClientConfig} = application:get_env(?APP, client),
+    ok = brod:start_client(BootstrapBroker, brod_client_1, ClientConfig),
+    io:format("Init EMQX-Kafka-Bridge with ~p~n", [BootstrapBroker]).
+
 kafka_pub(Hook, Params) ->
     case ets:lookup(topic_table, Hook) of
         [{_, Topic}] ->
+            Partition = application:get_env(?APP, partition, 1),
             Body = emqx_json:encode(Params),
-            ekaf:produce_async(Topic, Body);
+            brod:produce(brod_client_1, Topic, Partition, <<>>, Body);
         [] ->
             io:format("hook not matched: ~p, all_table: ~p~n", [Hook, ets:tab2list(topic_table)])
     end.

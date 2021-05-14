@@ -1,14 +1,77 @@
 %%-*- mode: erlang -*-
 
 {mapping,
- "bridge.kafka.host",
- "emqx_kafka_bridge.host",
- [{default, "127.0.0.1"}, {datatype, string}]}.
+ "bridge.kafka.broker",
+ "emqx_kafka_bridge.broker",
+ [{default, "localhost:9092"}, {datatype, string}]}.
+
+{translation,
+ "emqx_kafka_bridge.broker",
+ fun(Conf) ->
+    Broker = cuttlefish:conf_get("bridge.kafka.broker", Conf),
+    BrokerList = string:split(Broker, ",", all),
+    lists:map(fun(X) ->
+                 [Host, Port] = string:tokens(X, ":"),
+                 {string:trim(Host), list_to_integer(string:trim(Port))}
+              end,
+              BrokerList)
+ end}.
 
 {mapping,
- "bridge.kafka.port",
- "emqx_kafka_bridge.port",
- [{default, 9092}, {datatype, integer}]}.
+ "bridge.kafka.partition",
+ "emqx_kafka_bridge.partition",
+ [{datatype, integer}, {default, 1}]}.
+
+{mapping,
+ "bridge.kafka.client.string_configs",
+ "emqx_kafka_bridge.client",
+ [{datatype, string}]}.
+
+{mapping,
+ "bridge.kafka.client.atom_configs",
+ "emqx_kafka_bridge.client",
+ [{datatype, string}]}.
+
+{mapping,
+ "bridge.kafka.client.integer_configs",
+ "emqx_kafka_bridge.client",
+ [{datatype, string}]}.
+
+{translation,
+ "emqx_kafka_bridge.client",
+ fun(Conf) ->
+    Config = cuttlefish_variable:filter_by_prefix("bridge.kafka.client", Conf),
+    ClientConfig =
+        lists:map(fun(X) ->
+                     {Match, Options} = X,
+                     Type = lists:last(Match),
+                     Items = string:split(Options, ",", all),
+                     case Type of
+                         "atom_configs" ->
+                             lists:map(fun(Item) ->
+                                          [Option, Value] = string:tokens(Item, ":"),
+                                          {list_to_atom(string:trim(Option)),
+                                           list_to_atom(string:trim(Value))}
+                                       end,
+                                       Items);
+                         "integer_configs" ->
+                             lists:map(fun(Item) ->
+                                          [Option, Value] = string:tokens(Item, ":"),
+                                          {list_to_atom(string:trim(Option)),
+                                           list_to_integer(string:trim(Value))}
+                                       end,
+                                       Items);
+                         "string_configs" ->
+                             lists:map(fun(Item) ->
+                                          [Option, Value] = string:tokens(Item, ":"),
+                                          {list_to_atom(string:trim(Option)), string:trim(Value)}
+                                       end,
+                                       Items)
+                     end
+                  end,
+                  Config),
+    lists:append(ClientConfig)
+ end}.
 
 {mapping,
  "bridge.kafka.payload_encoding",
