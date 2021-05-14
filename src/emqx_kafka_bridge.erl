@@ -364,9 +364,8 @@ on_message_acked(#{clientid := ClientId, username := Username},
 kafka_pub(Hook, Params) ->
     case ets:lookup(topic_table, Hook) of
         [{_, Topic}] ->
-            io:format("producing to topic: ~p~n", [Topic]),
             Body = emqx_json:encode(Params),
-            ekaf:produce_async(list_to_binary(Topic), Body);
+            ekaf:produce_async(Topic, Body);
         [] ->
             io:format("hook not matched: ~p, all_table: ~p~n", [Hook, ets:tab2list(topic_table)])
     end.
