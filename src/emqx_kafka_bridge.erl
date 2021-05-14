@@ -62,14 +62,7 @@ load() ->
                      ets:insert(topic_table, {Hook, Filter})
                   end,
                   parse_rule(application:get_env(?APP, rules, []))),
-    io:format("topic_table: ~p~n", [ets:tab2list(topic_table)]),
-    Host = application:get_env(?APP, host, "localhost"),
-    Port = application:get_env(?APP, port, 9092),
-    application:set_env(ekaf, ekaf_bootstrap_broker, {Host, Port}),
-    application:set_env(ekaf, ekaf_partition_strategy, strict_round_robin),
-    application:set_env(ekaf, ekaf_per_partition_workers, 3),
-    application:set_env(ekaf, ekaf_per_partition_workers_max, 10),
-    {ok, _} = application:ensure_all_started(ekaf).
+    io:format("topic_table: ~p~n", [ets:tab2list(topic_table)]).
 
 unload() ->
     lists:foreach(fun({Hook, _Filter}) -> unload_(Hook) end,
