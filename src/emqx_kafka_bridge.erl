@@ -57,7 +57,10 @@ load() ->
     {ok, _} = application:ensure_all_started(brod),
     {ok, BootstrapBroker} = application:get_env(?APP, broker),
 
-    ok = brod:start_client(BootstrapBroker, brod_client_1, [{auto_start_producers, true}]),
+    ok =
+        brod:start_client(BootstrapBroker,
+                          brod_client_1,
+                          [{auto_start_producers, true}, {default_producer_config, []}]),
     io:format("Init EMQX-Kafka-Bridge with ~p, ~p~n",
               [BootstrapBroker, [{auto_start_producers, true}]]),
 
