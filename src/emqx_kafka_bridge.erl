@@ -57,16 +57,13 @@ load() ->
     {ok, _} = application:ensure_all_started(brod),
     {ok, BootstrapBroker} = application:get_env(?APP, broker),
 
-    ok =
-        brod:start_client(BootstrapBroker,
-                          brod_client_1,
-                          [{auto_start_producers, true}, {default_producer_config, []}]),
-    io:format("Init EMQX-Kafka-Bridge with ~p, ~p~n",
-              [BootstrapBroker, [{auto_start_producers, true}]]),
+    ok = brod:start_client(BootstrapBroker, brod_client_1),
+    io:format("Init EMQX-Kafka-Bridge with ~p, ~n", [BootstrapBroker]),
 
     ets:new(topic_table, [named_table, protected, set, {keypos, 1}]),
     lists:foreach(fun({Hook, Filter}) ->
                      load_(Hook, Filter),
+                     ok = brod:start_producer(brod_client_1, Filter, _ProducerConfig = []),
                      ets:insert(topic_table, {Hook, Filter})
                   end,
                   parse_rule(application:get_env(?APP, rules, []))),
