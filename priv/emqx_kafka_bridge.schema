@@ -22,72 +22,11 @@
  "emqx_kafka_bridge.partition",
  [{datatype, integer}, {default, 1}]}.
 
-{mapping,
- "bridge.kafka.client.string_configs",
- "emqx_kafka_bridge.client",
- [{datatype, string}]}.
-
-{mapping,
- "bridge.kafka.client.atom_configs",
- "emqx_kafka_bridge.client",
- [{datatype, string}]}.
-
-{mapping,
- "bridge.kafka.client.integer_configs",
- "emqx_kafka_bridge.client",
- [{datatype, string}]}.
-
-{translation,
- "emqx_kafka_bridge.client",
- fun(Conf) ->
-    Config = cuttlefish_variable:filter_by_prefix("bridge.kafka.client", Conf),
-    ClientConfig =
-        lists:map(fun(X) ->
-                     {Match, Options} = X,
-                     Type = lists:last(Match),
-                     Items = string:split(Options, ",", all),
-                     case Type of
-                         "atom_configs" ->
-                             lists:map(fun(Item) ->
-                                          [Option, Value] = string:tokens(Item, ":"),
-                                          {list_to_atom(string:trim(Option)),
-                                           list_to_atom(string:trim(Value))}
-                                       end,
-                                       Items);
-                         "integer_configs" ->
-                             lists:map(fun(Item) ->
-                                          [Option, Value] = string:tokens(Item, ":"),
-                                          {list_to_atom(string:trim(Option)),
-                                           list_to_integer(string:trim(Value))}
-                                       end,
-                                       Items);
-                         "string_configs" ->
-                             lists:map(fun(Item) ->
-                                          [Option, Value] = string:tokens(Item, ":"),
-                                          {list_to_atom(string:trim(Option)), string:trim(Value)}
-                                       end,
-                                       Items)
-                     end
-                  end,
-                  Config),
-    lists:append(ClientConfig)
- end}.
 
 {mapping,
  "bridge.kafka.payload_encoding",
  "emqx_kafka_bridge.payload_encoding",
  [{default, plain}, {datatype, {enum, [base62, base64, plain]}}]}.
-
-%% =================== Pool Configs ========================
-{mapping,
- "bridge.kafka.auto_reconnect",
- "emqx_kafka_bridge.auto_reconnect",
- [{default, 1}, {datatype, integer}]}.
-
-{mapping,
- "bridge.kafka.pool_size",
- "emqx_kafka_bridge.pool_size",
- [{default, 10}, {datatype, integer}]}.
 
 %% ====================== Rule configs ========================
 {mapping,
